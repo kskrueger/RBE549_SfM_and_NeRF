@@ -34,12 +34,12 @@ def estimateFundamentalMatrix(pt_correspondences):
     for i in range(pt_correspondences.shape[0]):
         A[i,:]=getRowOfA(pt_correspondences[i])
 
-    print(A)
+    # print(A)
     U,D,V = np.linalg.svd(A)
     F_vectorized = V[:,-1]
     F_noisy = F_vectorized.reshape(3,3)
     #SVD cleanup
     UF,UD,UV = np.linalg.svd(F_noisy)
     UD[-1]=0
-    F = UF @ UD @ UV
+    F = UF @ np.diag(UD) @ UV
     return F
