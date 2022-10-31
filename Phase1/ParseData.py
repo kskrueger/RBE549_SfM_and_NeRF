@@ -37,11 +37,11 @@ def parse_matches(file_number, folder_path=DEFAULT_MATCHES_FOLDER):
         correspondence = x[1:6] # RGB value, current (u,v)
 
         #separate each feature correspondence and add em to respective dict key
-        for i in range(int(x[0])-1):
+        for i in range(1,int(x[0])):
             current_correspondence = correspondence.copy()
-            current_correspondence.extend([x[-(i*3+1)],x[-(i*3+2)]])
+            current_correspondence.extend([x[-(i*3)+1],x[-(i*3)+2]])
 
-            key = str(file_number)+x[-i*3]
+            key = str(file_number)+x[-(i*3)]
             if key in matches_dict:
                 matches_dict[key].append(current_correspondence)
             else:
@@ -49,7 +49,7 @@ def parse_matches(file_number, folder_path=DEFAULT_MATCHES_FOLDER):
     #conversion to array
     for key in matches_dict:
         matches_dict[key] = np.array(matches_dict[key], dtype=np.float32)
-    # print(matches_dict)
+    print(matches_dict)
     return matches_dict
 
 #read K
@@ -76,6 +76,7 @@ def show_feature_matches(img1, img2, correspondences):
 							  [cv2.DMatch(index, index, 0) for index in range(correspondences.shape[0])], matches_img, (0, 255, 0), (0, 0, 255))
 		
     cv2.imshow('feature_matches',matches_img)
+    # cv2.imwrite('feature_matches.jpg',matches_img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
@@ -86,7 +87,7 @@ if __name__ == '__main__':
     argparser.add_argument('--calib_file_path', default=DEFAULT_CALIBRATION_FILENAME)
     args = argparser.parse_args()
 
-    K_matrix(args.calib_file_path)
+    # K_matrix(args.calib_file_path)
     corresponodences = parse_matches(file_number=1,folder_path=args.matches_folder_path)
 
     img1 = cv2.imread(os.path.join(os.getcwd(),'Phase1/Data/P3Data/1.png'))
