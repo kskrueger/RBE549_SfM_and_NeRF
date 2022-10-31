@@ -37,7 +37,7 @@ def estimateFundamentalMatrix(pt_correspondences):
 
     # print(A)
     U,D,V = np.linalg.svd(A)
-    F_vectorized = V[:,-1]
+    F_vectorized = V[-1,:]
     F_noisy = F_vectorized.reshape(3,3)
     #SVD cleanup
     UF,UD,UV = np.linalg.svd(F_noisy)
@@ -55,7 +55,7 @@ def estimateEpipole(F):
     Since epilines should pass through the epipole estimate epipole using the formula: F @ e = 0
     '''
     _,_,V = np.linalg.svd(F)
-    e = V[:,-1]
+    e = V[-1,:]
     e /= e[-1]
     return e
 
@@ -82,15 +82,8 @@ def plotEpipolarLines(F, x1, x2, img1, img2):
     #get epipoles
     e1 = estimateEpipole(F)
     e2 = estimateEpipole(F.T)
-    #draw lines
-    # def drawEpilines(x, e):
-    #     '''
-    #     x = (3, num_features)
-    #     e = epipole (3,1)
-    #     '''
-    #     m = (x-e)
-    #     m = m[0,:]/m[1,:]
 
+    #draw lines
     for pt in x1:
         i1 = cv2.line(img1, pt[:-1].astype(np.int), e1[:-1].astype(np.int), (0,0,0), 2)
     for pt in x2:
