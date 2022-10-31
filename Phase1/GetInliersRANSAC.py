@@ -53,5 +53,5 @@ def getInliersRANSAC(pt_correspondences, eps, n_iterations):
             global_inliers = inliers
     #optimize F with the best inlier set
     F_optimized = estimateFundamentalMatrix(pt_correspondences[global_inliers,:])
-    print(F_optimized)
+    # print(F_optimized)
     return F_optimized, global_inliers
