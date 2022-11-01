@@ -2,7 +2,7 @@
 # Karter Krueger and Tript Sharma
 # EssentialMatrixFromFundamentalMatrix.py
 
-def EssentialMatrixFromFundamentalMatrix():
+def essentialMatrixFromFundamentalMatrix(F,K):
     '''
     Input 
         F = fundamental matrix
@@ -10,4 +10,4 @@ def EssentialMatrixFromFundamentalMatrix():
     Output E
     E = K.T @ F @ K
     '''
-    pass
+    return K.T @ F @ K
