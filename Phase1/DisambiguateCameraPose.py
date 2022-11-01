@@ -1,16 +1,20 @@
 # RBE549: Building Built in Minutes using SfM
 # Karter Krueger and Tript Sharma
 # DisambiguateCameraPose.py
+import numpy as np
+from LinearTriangulation import linearTriangulation
 
-def disambiguateCamPose():
+def disambiguateCamPoseAndTriangulate(pt_pair_list, pose_list, K):
     '''
-    Check Chirality condition for all camera poses
+    Check Chirality condition for all camera poses. Returns the (scaled) triangulated world coordinates along with the 
+    corresponding camera pose (relative to the first camera) and number of points that satusfy the Chirality condition
+    #### TODO update the docstring below
     Input:
-        uv_list = point_pair correspondences between the two views (2,num_features,3,1)
+        uv_list = list of point_pair correspondences between the two views (2,num_features,3,1)
         pose_list = List of camera poses (candidate camera poses for second camera)
         K = cam intrinsics (K is assumed to be same for all cameras i.e. same camera used for all pics)
     Output:
-        Actual camera pose
+        triangulated X, Actual camera pose, inlier count
     C1,R1 = 0 matrix, I(3,3)    //considered at origin
     max_inliers = 0
     best_cam_pose = []
@@ -23,3 +27,26 @@ def disambiguateCamPose():
             best_cam_pose = pose
     return best_cam_pose // size = [(3,3),(3,1)]
     '''
+    C1 = np.zeros(3)
+    R1 = np.eye(3)
+    max_inlier_count = 0
+    best_cam_pose = []  #get T(or C) and R
+    optimal_X = []
+    for pose in pose_list:
+        C2, R2 = pose
+        extrinsics = [[C1,R1],[C2,R2]]
+
+        #get the estimated world corrdinates for the current extrinsics
+        X = linearTriangulation(pt_pair_list, extrinsics, K)
+
+        #Check Chriality
+        chirality_condition_check_vector = (R2[-1,:].T @ (X[:,:-1] - C2).T)
+
+        inlier_count = (chirality_condition_check_vector>0).sum()
+        
+        if inlier_count > max_inlier_count:
+            max_inliers = inlier_count
+            best_cam_pose = pose
+            optimal_X = X
+        
+        return optimal_X, best_cam_pose, max_inliers
