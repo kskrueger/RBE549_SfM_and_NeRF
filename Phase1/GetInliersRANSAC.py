@@ -3,12 +3,13 @@
 # GetInliersRANSAC.py
 import numpy as np
 from EstimateFundamentalMatrix import *
-def getInliersRANSAC(pt_correspondences, eps, n_iterations):
+def getInliersRANSAC(pt_correspondences, eps, n_iterations,K):
     '''
     Inputs:
         set of all point correspondences between two images
         eps: threshold for inlier check
         n_iterations: max num of iterations
+        K = camera intrinsic matrix
     Outputs:
         optimized F matrix
 
@@ -42,7 +43,7 @@ def getInliersRANSAC(pt_correspondences, eps, n_iterations):
             X1 = np.array([x1,y1,1])
             X2 = np.array([x2,y2,1])
             
-            val = X2.T @ F @ X1
+            val = X2 @ F @ X1
             # print(val)
             if (abs(val) < eps):
                 inlier_count+=1

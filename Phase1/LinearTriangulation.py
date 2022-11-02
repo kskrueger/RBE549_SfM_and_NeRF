@@ -43,10 +43,11 @@ def linearTriangulation(pt_pair_list, extrinsic_matrices, K):
     print(extrinsics1)
     C1, R1 = extrinsics1
     C2, R2 = extrinsics2
-    
-    P1 = K @ np.hstack((R1,C1.reshape((-1,1))))
+    I = np.eye(3)
 
-    P2 = K @ np.hstack((R2,C2.reshape((-1,1))))
+    P1 = K @ R1 @ np.hstack((I, -C1.reshape((-1,1))))
+
+    P2 = K @ R2 @ np.hstack((I, -C2.reshape((-1,1))))
 
     for x1i,x2i in zip(x1,x2):
         x1i_skew = skew(x1i)
@@ -59,5 +60,5 @@ def linearTriangulation(pt_pair_list, extrinsic_matrices, K):
         Xi = V[-1,:]
         Xi /= Xi[-1]
         X.append(Xi)
-    print(X)
+    # print(X)
     return np.array(X)

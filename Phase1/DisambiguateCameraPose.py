@@ -1,7 +1,9 @@
 # RBE549: Building Built in Minutes using SfM
 # Karter Krueger and Tript Sharma
 # DisambiguateCameraPose.py
+import matplotlib.pyplot as plt
 import numpy as np
+import Utils
 from LinearTriangulation import linearTriangulation
 
 def disambiguateCamPoseAndTriangulate(pt_pair_list, pose_list, K):
@@ -32,14 +34,19 @@ def disambiguateCamPoseAndTriangulate(pt_pair_list, pose_list, K):
     max_inlier_count = 0
     best_cam_pose = []  #get T(or C) and R
     optimal_X = []
+    candidate_X = []
+    # fig,axes = 
     for pose in pose_list:
         C2, R2 = pose
-        extrinsics = [[C1,R1],[C2,R2]]
+        cam_pair_extrinsics = [[C1,R1],[C2,R2]]
 
         #get the estimated world corrdinates for the current extrinsics
-        X = linearTriangulation(pt_pair_list, extrinsics, K)
+        X = linearTriangulation(pt_pair_list, cam_pair_extrinsics, K)
 
-        #Check Chriality
+        # Utils.plotTriangulation(X[:,0],X[:,2])
+        candidate_X.append(X)
+        
+        #Check Chirality
         chirality_condition_check_vector = (R2[-1,:].T @ (X[:,:-1] - C2).T)
 
         inlier_count = (chirality_condition_check_vector>0).sum()
@@ -49,4 +56,5 @@ def disambiguateCamPoseAndTriangulate(pt_pair_list, pose_list, K):
             best_cam_pose = pose
             optimal_X = X
         
-        return optimal_X, best_cam_pose, max_inliers
+        
+    return optimal_X, best_cam_pose, candidate_X, max_inliers

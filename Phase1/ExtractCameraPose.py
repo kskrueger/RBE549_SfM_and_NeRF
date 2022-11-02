@@ -23,9 +23,9 @@ def CamPoseFromE(E):
 
     U,D,V = np.linalg.svd(E)
     C = [U[:,-1], -U[:,-1]]
-    W = np.array([  [0,1,0],
+    W = np.array([  [ 0,1,0],
                     [-1,0,0],
-                    [0,0,1]
+                    [ 0,0,1]
                 ])
     R = [U@W@V, U@W.T@V]
 

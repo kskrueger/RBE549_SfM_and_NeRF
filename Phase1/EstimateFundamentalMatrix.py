@@ -24,7 +24,6 @@ def estimateFundamentalMatrix(pt_correspondences):
     U*D*V^T = F (cleanup)
     '''
     # assert pt_correspondences.shape[0] == 8
-
     A = np.zeros((pt_correspondences.shape[0],9))
     
     def getRowOfA(row):
@@ -43,6 +42,7 @@ def estimateFundamentalMatrix(pt_correspondences):
     UF,UD,UV = np.linalg.svd(F_noisy)
     UD[-1]=0
     F = UF @ np.diag(UD) @ UV
+    F /= F[2,2]
     return F
 
 def estimateEpipole(F):
@@ -69,15 +69,15 @@ def plotEpipolarLines(F, x1, x2, img1, img2):
     F @ x1 = 0
     F.T @ x2 = 0 
     '''
-    x1 = np.hstack((x1, np.ones((x1.shape[0],1))))
-    l1 = F @ x1.T   #x1 size = (num_features, 3)
-    l1 /= l1[-1,:]
+    # x1 = np.hstack((x1, np.ones((x1.shape[0],1))))
+    # l1 = F @ x1.T   #x1 size = (num_features, 3)
+    # l1 /= l1[-1,:]
 
-    x2 = np.hstack((x2, np.ones((x2.shape[0],1))))
-    l2 = F.T @ x2.T
-    print(l2)
-    l2 /= l2[-1,:]
-    print(l2)
+    # x2 = np.hstack((x2, np.ones((x2.shape[0],1))))
+    # l2 = F.T @ x2.T
+    # print(l2)
+    # l2 /= l2[-1,:]
+    # print(l2)
 
     #get epipoles
     e1 = estimateEpipole(F)
@@ -85,9 +85,9 @@ def plotEpipolarLines(F, x1, x2, img1, img2):
 
     #draw lines
     for pt in x1:
-        i1 = cv2.line(img1, pt[:-1].astype(np.int), e1[:-1].astype(np.int), (0,0,0), 2)
+        i1 = cv2.line(img1, pt.astype(np.int), e1[:-1].astype(np.int), (0,0,0), 2)
     for pt in x2:
-        i2 = cv2.line(img2, pt[:-1].astype(np.int), e2[:-1].astype(np.int), (0,0,0), 2)
+        i2 = cv2.line(img2, pt.astype(np.int), e2[:-1].astype(np.int), (0,0,0), 2)
 
     cv2.imshow('1',i1)
     cv2.imshow('2',i2)
