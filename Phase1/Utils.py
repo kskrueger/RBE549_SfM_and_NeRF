@@ -46,3 +46,12 @@ def plotAllTriangulation(X_list, is3D=False):
             ax1.scatter(X[:,0],X[:,2],s=2,c=color_list[i])
     plt.show()
     # return fig
+
+def plotTriangulationResults(X_linear, X_nonlinear, img):
+    for x,y in X_linear[:,:2]:
+        cv2.circle(img, (int(x),int(y)), 0, (255,0,0), 10)
+    for x,y in X_nonlinear[:,:2]:
+        cv2.circle(img, (int(x),int(y)), 0, (0,255,0), 10)
+    cv2.imshow('reprojections',img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
