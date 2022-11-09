@@ -53,4 +53,3 @@ class NeRF(nn.Module):
         rgb = self.rgb_network_final_layer(rgb_final_layer_input)
 
         return volume_density, rgb
-
