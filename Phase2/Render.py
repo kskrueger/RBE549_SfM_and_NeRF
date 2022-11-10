@@ -29,7 +29,7 @@ def get_rays(img_size, K, cam_world_T):
     return torch.stack((ray_origins, ray_dirs))
 
 # From paper: Once we shift to near plane, simple sample linearly from 0 to 1 for disparity n to inf original space
-def shift_rays(img_size, K, near, ray_origins, ray_dirs):
+def shift_rays_ndc(img_size, K, near, ray_origins, ray_dirs):
     h, w = img_size
     fx = K[0, 0]
     fy = K[1, 1]
@@ -94,7 +94,11 @@ def volume_sampling(z_vals, weights, samples_per_ray):
     return fine_samples
 
 
-def render(rays_batch, coarse_net, fine_net, xyz_embed, dir_embed, coarse_steps=64, far_dist=1):
+def render(rays_batch, coarse_net, fine_net, xyz_embed, dir_embed, K, img_size, coarse_steps=64, near_dist=0., far_dist=1.):
+    # convert rays to NDC space
+    rays_orig, rays_dir = shift_rays_ndc(img_size, K, 1., rays_batch[:, 0], rays_batch[:, 1])
+    rays_batch = torch.stack((rays_orig, rays_dir), -2)
+
     t_samples = torch.linspace(0, 1, coarse_steps)
     z_dists = (t_samples * far_dist)[..., None].expand((len(t_samples), 3))
 
@@ -115,7 +119,8 @@ def render(rays_batch, coarse_net, fine_net, xyz_embed, dir_embed, coarse_steps=
     dists = diffs[None, :].expand((rays_batch.shape[0], coarse_steps)) * torch.norm(rays_batch[:, 1, None], dim=-1).expand((-1, coarse_steps))
     dists_flat = dists.reshape((-1))
 
-    noise = 0
+    raw_noise_std = 1e0
+    noise = torch.randn(coarse_outputs[..., 3].shape) * raw_noise_std
     coarse_alpha = 1 - torch.exp(-nn.ReLU()(coarse_outputs[:, 3] + noise) * dists_flat)
 
     weights = coarse_alpha * torch.cumprod(torch.cat((torch.tensor([1]), 1 - coarse_alpha), -1), -1)[..., :-1]

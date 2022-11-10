@@ -21,11 +21,11 @@ def LoadData(data_path, device='cpu'):
     val_json = json.load(val_f)
 
     train_imgs = torch.from_numpy(np.array(
-        [cv2.imread(os.path.join(data_path, frame['file_path'][2:]) + ".png") for frame in train_json['frames']]))
+        [cv2.imread(os.path.join(data_path, frame['file_path'][2:]) + ".png")/255.0 for frame in train_json['frames']]))
     test_imgs = torch.from_numpy(np.array(
-        [cv2.imread(os.path.join(data_path, frame['file_path'][2:]) + ".png") for frame in test_json['frames']]))
+        [cv2.imread(os.path.join(data_path, frame['file_path'][2:]) + ".png")/255.0 for frame in test_json['frames']]))
     val_imgs = torch.from_numpy(np.array(
-        [cv2.imread(os.path.join(data_path, frame['file_path'][2:]) + ".png") for frame in val_json['frames']]))
+        [cv2.imread(os.path.join(data_path, frame['file_path'][2:]) + ".png")/255.0 for frame in val_json['frames']]))
 
     H, W = train_imgs[0].shape[:2]
     x_FOV = train_json['camera_angle_x']

@@ -11,7 +11,7 @@ from Network import NeRFNet, Encoder
 from Render import get_rays, render
 
 EPOCHS = 200000
-NUM_RAYS = 10000
+NUM_RAYS = 1600
 device = 'gpu' if torch.cuda.is_available() else 'cpu'
 
 data_path = "/Users/kskrueger/Projects/RBE549_SfM_and_NeRF/Phase2/Data/lego/"
@@ -33,12 +33,23 @@ train_rays = torch.stack([get_rays((H, W), K, cam_T) for cam_T in train_T])
 train_rays_flat = train_rays.permute((0, 2, 3, 1, 4)).reshape((train_rays.shape[0]*H*W, 2, 3))
 train_pixels_flat = train_imgs.reshape((train_imgs.shape[0]*H*W, 3))
 
-for e in range(EPOCHS):
-    idx = np.random.randint(0, train_rays_flat.shape[0], NUM_RAYS)
-    train_rays_batch = train_rays_flat[idx]
-    pixels_batch = train_pixels_flat[idx]
+rand_perm_idx = torch.randperm(train_rays_flat.shape[0])
+train_rays_flat = train_rays_flat[rand_perm_idx]
+train_pixels_flat = train_pixels_flat[rand_perm_idx]
+idx = 0
 
-    ray_rgbs = render(train_rays_batch, coarse_net, fine_net, xyz_embed, dir_embed)
+for e in range(EPOCHS):
+    # idx = np.random.randint(0, train_rays_flat.shape[0], NUM_RAYS)
+    train_rays_batch = train_rays_flat[idx:idx+NUM_RAYS]
+    pixels_batch = train_pixels_flat[idx:idx+NUM_RAYS]
+    idx += NUM_RAYS
+    if (idx - NUM_RAYS) > len(train_pixels_flat) - 1:
+        idx = 0
+        rand_perm_idx = torch.randperm(train_rays_flat.shape[0])
+        train_rays_flat = train_rays_flat[rand_perm_idx]
+        train_pixels_flat = train_pixels_flat[rand_perm_idx]
+
+    ray_rgbs = render(train_rays_batch, coarse_net, fine_net, xyz_embed, dir_embed, K, (H, W))
 
     loss = torch.mean(torch.square(ray_rgbs - pixels_batch))
 
