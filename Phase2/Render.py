@@ -18,15 +18,15 @@ def get_rays(img_size, K, cam_world_T):
     cy = K[1][2]
     fy = K[1][1]
     directions = torch.stack([(u - cx) / fx,
-                            -(v - cy) / fy,
-                            -torch.ones_like(u)], -1)
+                             -(v - cy) / fy,
+                             -torch.ones_like(u)], -1)
 
     # Rotate rays to world frame
     ray_dirs = torch.sum(directions[..., None, :] * cam_world_T[:3, :3], -1)
 
     # The camera origin applies to all rays using pin-hole model
     ray_origins = cam_world_T[:3, -1].expand(ray_dirs.shape)
-    return torch.stack((ray_origins, ray_dirs))
+    return torch.stack((ray_origins, ray_dirs), -2)
 
 # From paper: Once we shift to near plane, simple sample linearly from 0 to 1 for disparity n to inf original space
 def shift_rays_ndc(img_size, K, near, ray_origins, ray_dirs):
@@ -59,7 +59,6 @@ def shift_rays_ndc(img_size, K, near, ray_origins, ray_dirs):
 
     return ray_origins, ray_dirs
 
-# TODO: redo this!
 # Volume sampling from paper (5.2)
 # The math behind PDF and CDF is very similar to the github repo here: (https://github.com/yenchenlin/nerf-pytorch/)
 # Professor Sanket gave permission to use this math after we explained the logic behind it to him during office hours
@@ -124,7 +123,11 @@ def render(rays_batch, coarse_net, fine_net, xyz_embed, dir_embed, K, img_size, 
     coarse_alpha = 1 - torch.exp(-nn.ReLU()(coarse_outputs[:, 3] + noise) * dists_flat)
 
     weights = coarse_alpha * torch.cumprod(torch.cat((torch.tensor([1]), 1 - coarse_alpha), -1), -1)[..., :-1]
+    accumulated_weights = torch.sum(weights, -1)
 
     pixels = torch.sum(weights.reshape((-1, coarse_steps))[..., None] * coarse_rgb.reshape((-1, coarse_steps, 3)), -2)
+
+    # for lego model, we use white background assumption on data
+    pixels = pixels + (1. - accumulated_weights[..., None])
 
     return pixels
