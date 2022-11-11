@@ -29,13 +29,13 @@ def disambiguateCamPoseAndTriangulate(pt_pair_list, pose_list, K):
             best_cam_pose = pose
     return best_cam_pose // size = [(3,3),(3,1)]
     '''
-    C1 = np.zeros(3)
-    R1 = np.eye(3)
     max_inlier_count = 0
     best_cam_pose = []  #get T(or C) and R
     optimal_X = []
     candidate_X = []
-    # fig,axes = 
+    
+    C1 = np.zeros(3)
+    R1 = np.eye(3)
     for pose in pose_list:
         C2, R2 = pose
         cam_pair_extrinsics = [[C1,R1],[C2,R2]]
@@ -47,9 +47,10 @@ def disambiguateCamPoseAndTriangulate(pt_pair_list, pose_list, K):
         candidate_X.append(X)
         
         #Check Chirality
-        chirality_condition_check_vector = (R2[-1,:].T @ (X[:,:-1] - C2).T)
+        chirality_condition_check_vector = (R2[2,:].T @ (X[:,:-1] - C2).T)
+        Z_positive_condition = X[:,2]>0
 
-        inlier_count = (chirality_condition_check_vector>0).sum()
+        inlier_count = (chirality_condition_check_vector > 0 & Z_positive_condition).sum()
         
         if inlier_count > max_inlier_count:
             max_inliers = inlier_count
