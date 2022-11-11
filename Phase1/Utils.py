@@ -29,7 +29,7 @@ def plotTriangulation(x,y,z=None,fig=None,is3D=False):
     #     ax = fig.axes(projection='3d')
     #     ax.scatter3D(x, y, z, c=color,)
     # else:
-    plt.scatter(x,y)
+    plt.scatter(x,y,s=2,c='r')
     plt.show()
     # return fig
 
