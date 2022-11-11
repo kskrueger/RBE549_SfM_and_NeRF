@@ -47,11 +47,16 @@ def plotAllTriangulation(X_list, is3D=False):
     plt.show()
     # return fig
 
-def plotTriangulationResults(X_linear, X_nonlinear, img):
-    for x,y in X_linear[:,:2]:
-        cv2.circle(img, (int(x),int(y)), 0, (255,0,0), 10)
-    for x,y in X_nonlinear[:,:2]:
-        cv2.circle(img, (int(x),int(y)), 0, (0,255,0), 10)
+def plotTriangulationResults(X_linear, X_nonlinear, x_orig, img):
+    for x,y,z in X_linear:
+        cv2.drawMarker(img, (int(x/z),int(y/z)),  (255, 0, 0), cv2.MARKER_CROSS, 5, 1)
+        # cv2.circle(img, (int(x/z),int(y/z)), 0, (255,0,0), 5)
+    for x,y,z in X_nonlinear:
+        cv2.drawMarker(img, (int(x/z),int(y/z)),  (0, 255, 0), cv2.MARKER_CROSS, 5, 1)
+        # cv2.circle(img, (int(x/z),int(y/z)), 0, (0,255,0), 5)
+    for x,y in x_orig:
+        cv2.drawMarker(img, (int(x),int(y)),  (0, 0, 255), cv2.MARKER_CROSS, 5, 1)
+        # cv2.circle(img, (int(x/z),int(y/z)), 0, (0,255,0), 5)
     cv2.imshow('reprojections',img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()

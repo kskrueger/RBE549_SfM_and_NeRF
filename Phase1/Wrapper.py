@@ -54,4 +54,4 @@ X_optimized = nonLinearTriangulation(X,P1,P2,correspondences['12'][inlier_set,3:
 
 # fig = Utils.plotTriangulation(X_optimized[:,0],X_optimized[:,2])
 
-Utils.plotTriangulationResults((P1@X.T).T, (P1@X_optimized.T).T, img1.copy())
+Utils.plotTriangulationResults((P1@X.T).T, (P1@X_optimized.T).T, correspondences['12'][inlier_set,3:5], img1.copy())
