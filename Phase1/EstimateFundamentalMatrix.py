@@ -4,6 +4,9 @@
 
 import numpy as np
 
+from delete_helper import EstimateFundamentalMatrix
+def get_fundamental_mat1(points1: np.ndarray, points2: np.ndarray) -> np.ndarray:
+    return EstimateFundamentalMatrix(points1, points2)
 
 def get_fundamental_mat(points1: np.ndarray, points2: np.ndarray) -> np.ndarray:
     x_mat = np.zeros((len(points1), 9))
