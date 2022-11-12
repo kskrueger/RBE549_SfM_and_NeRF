@@ -21,7 +21,7 @@ def LoadData(data_path, device='cpu'):
     val_json = json.load(val_f)
 
     # Load at half res
-    new_sz = (400, 400)
+    new_sz = (200, 200)
     train_imgs = torch.from_numpy(np.array(
         [cv2.resize(cv2.imread(os.path.join(data_path, frame['file_path'][2:]) + ".png"), new_sz)/255.0 for frame in train_json['frames']]))
     test_imgs = torch.from_numpy(np.array(
