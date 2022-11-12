@@ -25,7 +25,7 @@ coarse_net.to(device)
 fine_net = NeRFNet()
 fine_net.to(device)
 
-opt = torch.optim.Adam(coarse_net.parameters(), lr=500)
+opt = torch.optim.Adam(coarse_net.parameters(), lr=.0001)
 
 xyz_embed = Encoder(10)
 dir_embed = Encoder(4)
@@ -53,7 +53,9 @@ else:
     W = we - ws
     train_rays_flat = train_rays[:1, hs:he, ws:we].reshape((train_rays[:1].shape[0], H*W, 2, 3))
     train_pixels_flat = train_imgs[:1, hs:he, ws:we].reshape((train_imgs[:1].shape[0], H*W, 3))
+    rand_idx = np.random.choice(train_rays_flat.shape[1], size=(NUM_RAYS))
 
+idx = 0
 for e in range(EPOCHS):
     opt.zero_grad()
     # idx = np.random.randint(0, train_rays_flat.shape[0], NUM_RAYS)
@@ -68,14 +70,14 @@ for e in range(EPOCHS):
             train_pixels_flat = train_pixels_flat[rand_perm_idx]
 
     else:
-        idx = np.random.choice(train_rays_flat.shape[0])
-        rand_idx = np.random.choice(train_rays_flat.shape[1], size=(NUM_RAYS))
+        # idx = np.random.choice(train_rays_flat.shape[0])
+        # rand_idx = np.random.choice(train_rays_flat.shape[1], size=(NUM_RAYS))
         train_rays_batch = train_rays_flat[idx, rand_idx]
         pixels_batch = train_pixels_flat[idx, rand_idx]
 
     ray_rgbs = render(train_rays_batch.cuda(), coarse_net, fine_net, xyz_embed, dir_embed, K, (H, W))
 
-    loss = torch.mean(torch.square(ray_rgbs - pixels_batch.cuda()))
+    loss = nn.functional.mse_loss(ray_rgbs, pixels_batch.cuda())
 
     loss.backward()
     opt.step()
