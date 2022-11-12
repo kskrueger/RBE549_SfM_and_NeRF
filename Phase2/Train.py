@@ -11,11 +11,11 @@ from Network import NeRFNet, Encoder
 from Render import get_rays, render
 
 EPOCHS = 200000
-NUM_RAYS = 6500
+NUM_RAYS = 100
 RAND_BATCHING = False
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-data_path = "/media/karterk/GeneralSSD/Classes/RBE549_CV/NeRF_SfM/Phase2/Data/lego/"
+data_path = "/Users/kskrueger/Projects/RBE549_SfM_and_NeRF/Phase2/Data/lego"
 K, train_imgs, train_T, test_imgs, test_T, val_imgs, val_T = LoadData(data_path, device='cpu')
 H, W = train_imgs[0].shape[:2]
 
@@ -53,9 +53,7 @@ else:
     W = we - ws
     train_rays_flat = train_rays[:1, hs:he, ws:we].reshape((train_rays[:1].shape[0], H*W, 2, 3))
     train_pixels_flat = train_imgs[:1, hs:he, ws:we].reshape((train_imgs[:1].shape[0], H*W, 3))
-    rand_idx = np.random.choice(train_rays_flat.shape[1], size=(NUM_RAYS))
 
-idx = 0
 for e in range(EPOCHS):
     opt.zero_grad()
     # idx = np.random.randint(0, train_rays_flat.shape[0], NUM_RAYS)
@@ -70,14 +68,14 @@ for e in range(EPOCHS):
             train_pixels_flat = train_pixels_flat[rand_perm_idx]
 
     else:
-        # idx = np.random.choice(train_rays_flat.shape[0])
-        # rand_idx = np.random.choice(train_rays_flat.shape[1], size=(NUM_RAYS))
+        idx = np.random.choice(train_rays_flat.shape[0])
+        rand_idx = np.random.choice(train_rays_flat.shape[1], size=(NUM_RAYS))
         train_rays_batch = train_rays_flat[idx, rand_idx]
         pixels_batch = train_pixels_flat[idx, rand_idx]
 
-    ray_rgbs = render(train_rays_batch.cuda(), coarse_net, fine_net, xyz_embed, dir_embed, K, (H, W))
+    ray_rgbs = render(train_rays_batch, coarse_net, fine_net, xyz_embed, dir_embed, K, (H, W))
 
-    loss = nn.functional.mse_loss(ray_rgbs, pixels_batch.cuda())
+    loss = nn.MSELoss()(ray_rgbs, pixels_batch)
 
     loss.backward()
     opt.step()

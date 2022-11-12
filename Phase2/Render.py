@@ -93,41 +93,45 @@ def volume_sampling(z_vals, weights, samples_per_ray):
     return fine_samples
 
 
-def render(rays_batch, coarse_net, fine_net, xyz_embed, dir_embed, K, img_size, coarse_steps=64, near_dist=0., far_dist=1.):
+def render(rays_batch, coarse_net, fine_net, xyz_embed, dir_embed, K, img_size, coarse_steps=64, near=2., far=6.):
+    rays_orig, rays_dir = rays_batch[:, 0], rays_batch[:, 1]
     # convert rays to NDC space
-    rays_orig, rays_dir = shift_rays_ndc(img_size, K, 1., rays_batch[:, 0], rays_batch[:, 1])
-    rays_batch = torch.stack((rays_orig, rays_dir), -2).cuda()
+    rays_orig, rays_dir = shift_rays_ndc(img_size, K, 1., rays_orig, rays_dir)
+    # rays_batch = torch.stack((rays_orig, rays_dir), -2)#.cuda()
 
-    t_samples = torch.linspace(0, 1, coarse_steps).cuda()
-    z_dists = (t_samples * far_dist)[..., None].expand((len(t_samples), 3)).cuda()
+    t_samples = torch.linspace(0, 1, coarse_steps)#.cuda()
+    # z_dists = (t_samples * far_dist)[..., None]#.expand((len(t_samples), 3))#.cuda()
+
+    z_dists = 1. / (1. / near * (1. - t_samples) + 1. / far * (t_samples))
 
     # convert to points using origin + vectors * dist
-    pts = rays_batch[:, 0, None].expand((-1, coarse_steps, 3)) + rays_batch[:, 1, None].expand((-1, coarse_steps, 3)) * z_dists
+    pts = rays_orig[:, None, :] + rays_dir[:, None, :] * z_dists[..., None]
     pts_flat = pts.reshape((-1, 3))
 
-    view_dirs_flat = rays_batch[:, 1, None].expand((-1, coarse_steps, 3)).reshape(-1, 3)
-    view_dirs_flat = view_dirs_flat / torch.norm(view_dirs_flat, dim=-1)[..., None].expand((-1, 3))
+    view_dirs_flat = rays_dir / torch.norm(rays_dir, dim=-1)[..., None].expand((-1, 3))
+    view_dirs_flat = view_dirs_flat[:, None, :].expand((-1, 64, 3)).reshape(-1, 3)
 
-    pts_embedded = xyz_embed.embed(pts_flat).float().cuda()
-    dir_embedded = dir_embed.embed(view_dirs_flat).float().cuda()
+    pts_embedded = xyz_embed.embed(pts_flat).float()
+    dir_embedded = dir_embed.embed(view_dirs_flat).float()
 
     coarse_outputs = coarse_net(pts_embedded, dir_embedded)
     coarse_rgb = nn.Sigmoid()(coarse_outputs[:, :3])
 
-    diffs = torch.cat((torch.diff(z_dists[:, 0]), torch.tensor([1e10]).cuda())).cuda()
-    dists = diffs[None, :].expand((rays_batch.shape[0], coarse_steps)) * torch.norm(rays_batch[:, 1, None], dim=-1).expand((-1, coarse_steps))
+    diffs = torch.cat((torch.diff(z_dists), torch.tensor([1e10])))
+    dists = diffs[None, :] * torch.norm(rays_dir, dim=-1)[:, None]
     dists_flat = dists.reshape((-1))
 
     # raw_noise_std = 0
     # noise = torch.randn(coarse_outputs[..., 3].shape).cuda() * raw_noise_std
-    coarse_alpha = 1 - torch.exp(-nn.functional.relu(coarse_outputs[:, 3]) * dists_flat)
+    coarse_alpha = 1 - torch.exp(-nn.ReLU()(coarse_outputs[:, 3]) * dists_flat)
+    coarse_alpha = coarse_alpha.reshape((-1, 64))
 
-    weights = coarse_alpha * torch.cumprod(torch.cat((torch.tensor([1]).cuda(), 1 - coarse_alpha), -1), -1)[..., :-1]
-    accumulated_weights = torch.sum(weights.reshape((-1, coarse_steps)), -1)
+    weights = coarse_alpha * torch.cumprod(torch.cat((torch.ones((coarse_alpha.shape[0], 1)), 1 - coarse_alpha), -1), -1)[..., :-1]
+    accumulated_weights = torch.sum(weights, 1)
 
-    pixels = torch.sum(weights.reshape((-1, coarse_steps))[..., None] * coarse_rgb.reshape((-1, coarse_steps, 3)), -2)
+    pixels = torch.sum(weights[..., None] * coarse_rgb.reshape((-1, coarse_steps, 3)), -2)
 
     # for lego model, we use white background assumption on data
-    # pixels = pixels + (1. - accumulated_weights[..., None])
+    pixels = pixels + (1. - accumulated_weights[..., None])
 
     return pixels
