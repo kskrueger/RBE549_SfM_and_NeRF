@@ -60,7 +60,6 @@ for m_i, m_l in match_files:
     features = {}
     visible_from_img_i = np.zeros((len(imgs), len(m_l[1:])))  # visbility matrix for IMG_I's matches for feature k in image J
     for feature_k, l in enumerate(m_l[1:]):
-        # TODO: fix num_matches loop
         vals = np.array(l.strip(" \n").strip("\n").split(' '), dtype=float)
         num_matches, R, G, B, u_i, v_i, img_j, u_j, v_j = vals[:9]
         num_matches = int(num_matches)
