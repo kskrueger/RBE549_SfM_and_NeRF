@@ -5,113 +5,34 @@
 import numpy as np
 from scipy.sparse import lil_matrix
 from scipy.optimize import least_squares
+import scipy.optimize
 
-class PySBA:
-    """Python class for Simple Bundle Adjustment"""
+def BundleAdjustment(V, X, P, x, n_cams):
+    def loss(params):
+        X = params.reshape((-1,4))
+        # X = params
+        final_err = 0
+        for idx in n_cams:
+            err = (
+                V[idx,:] * (np.square((X @ P[idx][0,:]) / (X @ P[idx][2,:]) - x[idx][:,0])) +
+                V[idx,:] * (np.square((X @ P[idx][1,:]) / (X @ P[idx][2,:]) - x[idx][:,1]))
+                ).sum()
+            final_err += err
+        return final_err
+        # return (err1 + err2).sum()
 
-    def __init__(self, cameraArray, points3D, points2D, cameraIndices, point2DIndices):
-        """Intializes all the class attributes and instance variables.
-            Write the specifications for each variable:
-            cameraArray with shape (n_cameras, 9) contains initial estimates of parameters for all cameras.
-                    First 3 components in each row form a rotation vector,
-                    next 3 components form a translation vector,
-                    then a focal distance and two distortion parameters.
-            points_3d with shape (n_points, 3)
-                    contains initial estimates of point coordinates in the world frame.
-            camera_ind with shape (n_observations,)
-                    contains indices of cameras (from 0 to n_cameras - 1) involved in each observation.
-            point_ind with shape (n_observations,)
-                    contatins indices of points (from 0 to n_points - 1) involved in each observation.
-            points_2d with shape (n_observations, 2)
-                    contains measured 2-D coordinates of points projected on images in each observations.
-        """
-        self.cameraArray = cameraArray
-        self.points3D = points3D
-        self.points2D = points2D
+    def loss(params):
+        error = 0
+        # n_images = len(image_paths)
+        error += loss(params)
+        print(error)
+        return error
 
-        self.cameraIndices = cameraIndices
-        self.point2DIndices = point2DIndices
+    cams_pose = [] # R and T of the 6 cameras
+    params = np.concatenate([cams_pose.reshape(-1), X.reshape(-1)],axis=0)
+    optimized = scipy.optimize.least_squares(loss, params, x_scale='jac', ftol=1e-4, method='trf',)
+    cam_pose_optimized = optimized.x[: n_cams*7].reshape((n_cams, 3, 3)) #7 for x,y,z,quaternion
+    X_optimized = optimized.x[n_cams*7, :].reshape(X.shape)
 
-    def rotate(self, points, rot_vecs):
-        """Rotate points by given rotation vectors.
-        Rodrigues' rotation formula is used.
-        """
-        theta = np.linalg.norm(rot_vecs, axis=1)[:, np.newaxis]
-        with np.errstate(invalid='ignore'):
-            v = rot_vecs / theta
-            v = np.nan_to_num(v)
-        dot = np.sum(points * v, axis=1)[:, np.newaxis]
-        cos_theta = np.cos(theta)
-        sin_theta = np.sin(theta)
-
-        return cos_theta * points + sin_theta * np.cross(v, points) + dot * (1 - cos_theta) * v
-
-
-    def project(self, points, cameraArray):
-        """Convert 3-D points to 2-D by projecting onto images."""
-        points_proj = self.rotate(points, cameraArray[:, :3])
-        points_proj += cameraArray[:, 3:6]
-        points_proj = -points_proj[:, :2] / points_proj[:, 2, np.newaxis]
-        f = cameraArray[:, 6]
-        k1 = cameraArray[:, 7]
-        k2 = cameraArray[:, 8]
-        n = np.sum(points_proj ** 2, axis=1)
-        r = 1 + k1 * n + k2 * n ** 2
-        points_proj *= (r * f)[:, np.newaxis]
-        return points_proj
-
-
-    def fun(self, params, n_cameras, n_points, camera_indices, point_indices, points_2d):
-        """Compute residuals.
-        `params` contains camera parameters and 3-D coordinates.
-        """
-        camera_params = params[:n_cameras * 9].reshape((n_cameras, 9))
-        points_3d = params[n_cameras * 9:].reshape((n_points, 3))
-        points_proj = self.project(points_3d[point_indices], camera_params[camera_indices])
-        return (points_proj - points_2d).ravel()
-
-    def bundle_adjustment_sparsity(self, numCameras, numPoints, cameraIndices, pointIndices):
-        m = cameraIndices.size * 2
-        n = numCameras * 9 + numPoints * 3
-        A = lil_matrix((m, n), dtype=int)
-
-        i = np.arange(cameraIndices.size)
-        for s in range(9):
-            A[2 * i, cameraIndices * 9 + s] = 1
-            A[2 * i + 1, cameraIndices * 9 + s] = 1
-
-        for s in range(3):
-            A[2 * i, numCameras * 9 + pointIndices * 3 + s] = 1
-            A[2 * i + 1, numCameras * 9 + pointIndices * 3 + s] = 1
-
-        return A
-
-
-    def optimizedParams(self, params, n_cameras, n_points):
-        """
-        Retrieve camera parameters and 3-D coordinates.
-        """
-        camera_params = params[:n_cameras * 9].reshape((n_cameras, 9))
-        points_3d = params[n_cameras * 9:].reshape((n_points, 3))
-
-        return camera_params, points_3d
-
-
-    def bundleAdjust(self):
-        """ Returns the bundle adjusted parameters, in this case the optimized
-         rotation and translation vectors. """
-        numCameras = self.cameraArray.shape[0]
-        numPoints = self.points3D.shape[0]
-
-        x0 = np.hstack((self.cameraArray.ravel(), self.points3D.ravel()))
-        f0 = self.fun(x0, numCameras, numPoints, self.cameraindices, self.point2DIndices, self.points2D)
-
-        A = self.bundle_adjustment_sparsity(numCameras, numPoints, self.cameraIndices, self.point2DIndices)
-
-        res = least_squares(self.fun, x0, jac_sparsity=A, verbose=2, x_scale='jac', ftol=1e-4, method='trf',
-                            args=(numCameras, numPoints, self.cameraIndices, self.point2DIndices, self.points2D))
-
-        params = self.optimizedParams(res.x, numCameras, numPoints, self.cameraIndices, self.point2DIndices, self.points2D)
-
-        return params
-
+    print(X_optimized, cam_pose_optimized)
+    return X_optimized, cam_pose_optimized

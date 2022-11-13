@@ -295,23 +295,10 @@ for img_jj in match_data[img_ii].keys():
 
     print("Finished, i, j", img_ii, img_jj)
 
-# visibility =
-# scipy.optimize.least_squares()
 
 plt.legend()
 plt.plot()
-print("a")
 
-# lns = plotEpipolarLines(F2un, pts1i, pts2i, imgs[0], imgs[1])
-#
-# from delete_helper import plot_epipolar_lines0, plot_epipolar_lines
-#
-# img1 = imgs[0].copy()
-# img2 = imgs[1].copy()
-#
-# plot_epipolar_lines(pts1h.T, pts2h.T, F, True)
-#
-# print("a'")
-# plot_epipolar_lines0(img1, img2, K, pts1h.T, pts2h.T, F2un)
-#
-# print('a')
+# Run bundle adjustment here and re-plot the final camera poses and point positions
+
+print("Done")
