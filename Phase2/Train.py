@@ -10,12 +10,14 @@ from Loader import LoadData
 from Network import NeRFNet, Encoder
 from Render import get_rays, render
 
+from torch.utils.tensorboard import SummaryWriter
+
 EPOCHS = 200000
-NUM_RAYS = 100
+NUM_RAYS = 6500
 RAND_BATCHING = False
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-data_path = "/Users/kskrueger/Projects/RBE549_SfM_and_NeRF/Phase2/Data/lego"
+data_path = "/media/karterk/GeneralSSD/Classes/RBE549_CV/NeRF_SfM/Phase2/Data/lego"
 K, train_imgs, train_T, test_imgs, test_T, val_imgs, val_T = LoadData(data_path, device='cpu')
 H, W = train_imgs[0].shape[:2]
 
@@ -25,7 +27,9 @@ coarse_net.to(device)
 fine_net = NeRFNet()
 fine_net.to(device)
 
-opt = torch.optim.Adam(coarse_net.parameters(), lr=.0001)
+opt = torch.optim.Adam(coarse_net.parameters(), lr=5e-4)
+
+Writer = SummaryWriter("./Logs/")
 
 xyz_embed = Encoder(10)
 dir_embed = Encoder(4)
@@ -51,8 +55,8 @@ else:
     we = int(H*.75)
     H = he - hs
     W = we - ws
-    train_rays_flat = train_rays[:1, hs:he, ws:we].reshape((train_rays[:1].shape[0], H*W, 2, 3))
-    train_pixels_flat = train_imgs[:1, hs:he, ws:we].reshape((train_imgs[:1].shape[0], H*W, 3))
+    train_rays_flat = train_rays[:, hs:he, ws:we].reshape((train_rays[:].shape[0], H*W, 2, 3))
+    train_pixels_flat = train_imgs[:, hs:he, ws:we].reshape((train_imgs[:].shape[0], H*W, 3))
 
 for e in range(EPOCHS):
     opt.zero_grad()
@@ -70,8 +74,8 @@ for e in range(EPOCHS):
     else:
         idx = np.random.choice(train_rays_flat.shape[0])
         rand_idx = np.random.choice(train_rays_flat.shape[1], size=(NUM_RAYS))
-        train_rays_batch = train_rays_flat[idx, rand_idx]
-        pixels_batch = train_pixels_flat[idx, rand_idx]
+        train_rays_batch = train_rays_flat[idx, rand_idx].cuda()
+        pixels_batch = train_pixels_flat[idx, rand_idx].cuda()
 
     ray_rgbs = render(train_rays_batch, coarse_net, fine_net, xyz_embed, dir_embed, K, (H, W))
 
@@ -80,7 +84,17 @@ for e in range(EPOCHS):
     loss.backward()
     opt.step()
 
-    print("Epoch", e, "Loss: ", loss.detach().cpu().numpy())
+    loss_np = loss.detach().cpu().numpy()
+
+    print("Epoch", e, "Loss: ", loss_np)
+
+    Writer.add_scalar(
+        "LossEveryIter",
+        loss_np,
+        e,
+    )
+    # If you don't flush the tensorboard doesn't update until a lot of iterations!
+    Writer.flush()
 
     # Save checkpoint every some SaveCheckPoint's iterations
     if e % 5000 == 0:

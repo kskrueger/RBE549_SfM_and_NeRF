@@ -99,10 +99,10 @@ def render(rays_batch, coarse_net, fine_net, xyz_embed, dir_embed, K, img_size, 
     rays_orig, rays_dir = shift_rays_ndc(img_size, K, 1., rays_orig, rays_dir)
     # rays_batch = torch.stack((rays_orig, rays_dir), -2)#.cuda()
 
-    t_samples = torch.linspace(0, 1, coarse_steps)#.cuda()
+    t_samples = torch.linspace(0, 1, coarse_steps).cuda()
     # z_dists = (t_samples * far_dist)[..., None]#.expand((len(t_samples), 3))#.cuda()
 
-    z_dists = 1. / (1. / near * (1. - t_samples) + 1. / far * (t_samples))
+    z_dists = (1. / (1. / near * (1. - t_samples) + 1. / far * (t_samples))).cuda()
 
     # convert to points using origin + vectors * dist
     pts = rays_orig[:, None, :] + rays_dir[:, None, :] * z_dists[..., None]
@@ -117,7 +117,7 @@ def render(rays_batch, coarse_net, fine_net, xyz_embed, dir_embed, K, img_size, 
     coarse_outputs = coarse_net(pts_embedded, dir_embedded)
     coarse_rgb = nn.Sigmoid()(coarse_outputs[:, :3])
 
-    diffs = torch.cat((torch.diff(z_dists), torch.tensor([1e10])))
+    diffs = torch.cat((torch.diff(z_dists), torch.tensor([1e10]).cuda()))
     dists = diffs[None, :] * torch.norm(rays_dir, dim=-1)[:, None]
     dists_flat = dists.reshape((-1))
 
@@ -126,7 +126,7 @@ def render(rays_batch, coarse_net, fine_net, xyz_embed, dir_embed, K, img_size, 
     coarse_alpha = 1 - torch.exp(-nn.ReLU()(coarse_outputs[:, 3]) * dists_flat)
     coarse_alpha = coarse_alpha.reshape((-1, 64))
 
-    weights = coarse_alpha * torch.cumprod(torch.cat((torch.ones((coarse_alpha.shape[0], 1)), 1 - coarse_alpha), -1), -1)[..., :-1]
+    weights = coarse_alpha * torch.cumprod(torch.cat((torch.ones((coarse_alpha.shape[0], 1)).cuda(), 1 - coarse_alpha), -1), -1)[..., :-1]
     accumulated_weights = torch.sum(weights, 1)
 
     pixels = torch.sum(weights[..., None] * coarse_rgb.reshape((-1, coarse_steps, 3)), -2)
