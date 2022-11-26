@@ -26,7 +26,7 @@ correspondences = parse_matches(file_number=1,folder_path=args.matches_folder_pa
 img1 = cv2.imread(os.path.join(os.getcwd(),'Phase1/Data/P3Data/1.png'))
 img2 = cv2.imread(os.path.join(os.getcwd(),'Phase1/Data/P3Data/2.png'))
 
-F, inlier_set  = getInliersRANSAC(correspondences['12'], eps=0.02, n_iterations=1000, K=K)
+F, inlier_set  = getInliersRANSAC(correspondences['12'], eps=0.02, n_iterations=100, K=K)
 print(F)
 # show_feature_matches(img1,img2,correspondences['12'][inlier_set,:])
 F_cv, mask = cv2.findFundamentalMat(correspondences['12'][inlier_set,3:5],correspondences['12'][inlier_set,5:7],cv2.FM_LMEDS)
@@ -38,13 +38,20 @@ candidate_pose_list = CamPoseFromE(E)
 X, pose, candidate_X, inlier_count = disambiguateCamPoseAndTriangulate([correspondences['12'][inlier_set,3:5],correspondences['12'][inlier_set,5:7]],candidate_pose_list,K)
 # print(X)
 
-Utils.plotTriangulation(X[:,0],X[:,2])
+# Utils.plotTriangulation(X[:,0],X[:,2])
 # Utils.plotAllTriangulation(candidate_X)
 # Utils.plotTriangulation(X[:,0],X[:,1],X[:,2])
 # fig.show()
 
-# P1 = np.hstack((np.eye(3), np.zeros((3,1))))
-# P2 = np.hstack((pose[1], pose[0].reshape((-1,1))))
-# X_optimized = nonLinearTriangulation(X,P1,P2,correspondences['12'][inlier_set,3:5],correspondences['12'][inlier_set,5:7])
+C1 = np.zeros(3)
+R1 = np.eye(3)
+C2 = candidate_pose_list[0][0]
+R2 = candidate_pose_list[0][1]
+I = np.eye(3)
+P1 = K @ R1 @ np.hstack((I, -C1.reshape((-1,1))))
+P2 = K @ R2 @ np.hstack((I, -C2.reshape((-1,1))))
+X_optimized = nonLinearTriangulation(X,P1,P2,correspondences['12'][inlier_set,3:5],correspondences['12'][inlier_set,5:7])
 
-# fig = Utils.plotTriangulation(X[:,0],X[:,2],fig=fig)
+# fig = Utils.plotTriangulation(X_optimized[:,0],X_optimized[:,2])
+
+Utils.plotTriangulationResults((P1@X.T).T, (P1@X_optimized.T).T, correspondences['12'][inlier_set,3:5], img1.copy())
